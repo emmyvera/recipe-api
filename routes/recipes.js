@@ -1,6 +1,8 @@
 module.exports = (app) => {
   const Recipes = app.db.models.Recipes;
   const Reviews = app.db.models.Reviews;
+  const Users = app.db.models.Users;
+
   app
     .route("/recipes")
     // Get Recipes
@@ -42,7 +44,21 @@ module.exports = (app) => {
        * @apiErrorExample {json} Error
        * HTTP/1.1 500 Internal Server Error
        */
-      Recipes.findAll({})
+      Recipes.findAll({
+        include: [
+          {
+            model: Users,
+            attributes: [
+              "id",
+              "email",
+              "first_name",
+              "last_name",
+              "phone",
+              "image_url",
+            ], // Specify which user attributes to include
+          },
+        ],
+      })
         .then((recipes) => {
           res.json({ recipes: recipes });
         })
@@ -205,9 +221,26 @@ module.exports = (app) => {
      *   "msg": "Error message"
      * }
      */
-    Recipes.findByPk(req.params.id)
+    Recipes.findByPk(req.params.id, {
+      include: [
+        {
+          model: Users,
+          attributes: [
+            "id",
+            "email",
+            "first_name",
+            "last_name",
+            "phone",
+            "image_url",
+          ], // Specify which user attributes to include
+        },
+        {
+          model: Reviews,
+          attributes: ["id", "description", "rate"], // Specify which user attributes to include
+        },
+      ],
+    })
       .then((result) => {
-        console.log(req.params);
         if (result === null) {
           res.json({ msg: "Recipe Not Found" });
         } else {
