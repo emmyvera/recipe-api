@@ -177,6 +177,79 @@ module.exports = (app) => {
       });
   });
 
+  app.get("/recipes/search", (req, res) => {
+    /**
+     * @api {get} /recipes/search Search for recipes
+     * @apiGroup Recipes
+     * @apiParam {String} query Search query
+     * @apiSuccess {Object[]} recipes List of matching recipes
+     * @apiSuccess {Number} recipes.id Recipe id
+     * @apiSuccess {String} recipes.food_name Recipe name
+     * @apiSuccess {String} recipes.description Recipe description
+     * @apiSuccess {String} recipes.ingredients Recipe ingredients
+     * @apiSuccess {String} recipes.preparation Recipe preparation method
+     * @apiSuccess {String} recipes.image_url Image URL
+     * @apiSuccess {String} recipes.video_url Video URL
+     * @apiSuccess {Number} recipes.views Number of views
+     * @apiSuccess {Number} recipes.user_id User id
+     * @apiSuccess {Date} recipes.created_at Creation date
+     * @apiSuccess {Date} recipes.updated_at Last update date
+     * @apiSuccessExample {json} Success
+     * HTTP/1.1 200 OK
+     * {
+     *   "recipes": [
+     *     {
+     *       "id": 1,
+     *       "food_name": "Spaghetti Bolognese",
+     *       "description": "A classic Italian pasta dish",
+     *       "ingredients": "Spaghetti, ground beef, tomatoes, garlic, onion, olive oil, herbs",
+     *       "preparation": "Cook the spaghetti. Prepare the sauce with ground beef and tomatoes.",
+     *       "image_url": "http://example.com/image.jpg",
+     *       "video_url": "http://example.com/video.mp4",
+     *       "views": 100,
+     *       "user_id": 1,
+     *       "created_at": "2024-06-16T15:29:11.700Z",
+     *       "updated_at": "2024-06-16T15:29:11.700Z"
+     *     }
+     *   ]
+     * }
+     * @apiErrorExample {json} Error
+     * HTTP/1.1 500 Internal Server Error
+     * {
+     *   "message": "An error occurred while searching for recipes"
+     * }
+     */
+    const query = req.query.query || "";
+    Recipes.findAll({
+      where: {
+        food_name: {
+          [app.db.Sequelize.Op.like]: `%${query}%`,
+        },
+      },
+      include: [
+        {
+          model: Users,
+          attributes: [
+            "id",
+            "email",
+            "first_name",
+            "last_name",
+            "phone",
+            "image_url",
+          ],
+        },
+      ],
+    })
+      .then((recipes) => {
+        res.json({ recipes });
+      })
+      .catch((err) => {
+        res
+          .status(500)
+          .json({ message: "An error occurred while searching for recipes" });
+      });
+  });
+
   // Get Recipe Details
   app.get("/recipes/:id", (req, res) => {
     /**
