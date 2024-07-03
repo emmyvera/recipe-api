@@ -62,3 +62,10 @@ npm-debug.log*
 # Firebase
 firebase.json
 firebase-debug.log
+
+#  Uploaded Images
+/uploads/images/*
+/uploads/images/*.jpg
+/uploads/images/*.png
+/uploads/images/*.gif
+/uploads/images/*.jpeg

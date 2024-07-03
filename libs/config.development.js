@@ -6,7 +6,8 @@ module.exports = {
   username: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   params: {
-    dialect: "mysql",
+    dialect: "sqlite",
+    storage: "recipes_db.sqlite",
     logging: (sql) => {
       logger.info(`[${new Date()}] ${sql}`);
     },

@@ -1,6 +1,10 @@
+import upload from "../libs/multer";
+
 module.exports = (app) => {
   const Posts = app.db.models.Posts;
   const Comments = app.db.models.Comments;
+  const Users = app.db.models.Users;
+
   app
     .route("/posts")
     .get((req, res) => {
@@ -40,7 +44,21 @@ module.exports = (app) => {
        * @apiErrorExample {json} Error
        * HTTP/1.1 412 Precondition Failed
        */
-      Posts.findAll({})
+      Posts.findAll({
+        include: [
+          {
+            model: Users,
+            attributes: [
+              "id",
+              "email",
+              "first_name",
+              "last_name",
+              "phone",
+              "image_url",
+            ], // Specify which user attributes to include
+          },
+        ],
+      })
         .then((result) => {
           res.json(result);
         })
@@ -48,7 +66,7 @@ module.exports = (app) => {
           res.status(412).json({ msg: error.message });
         });
     })
-    .post(app.auth.authenticate(), (req, res) => {
+    .post(app.auth.authenticate(), upload.single("image"), (req, res) => {
       /**
        * @api {post} /posts Create a new post
        * @apiGroup Posts
@@ -90,6 +108,12 @@ module.exports = (app) => {
        * HTTP/1.1 412 Precondition Failed
        */
       req.body.user_id = req.user.id;
+
+      // Check if an image file is uploaded
+      if (req.file) {
+        req.body.image_url = `/uploads/images/${req.file.filename}`;
+      }
+
       Posts.create(req.body)
         .then((result) => {
           res.json(result);
@@ -125,7 +149,25 @@ module.exports = (app) => {
      * HTTP/1.1 404 Not Found
      */
 
-    Posts.findByPk(req.params.id)
+    Posts.findByPk(req.params.id, {
+      include: [
+        {
+          model: Users,
+          attributes: [
+            "id",
+            "email",
+            "first_name",
+            "last_name",
+            "phone",
+            "image_url",
+          ], // Specify which user attributes to include
+        },
+        {
+          model: Comments,
+          attributes: ["id", "comment"],
+        },
+      ],
+    })
       .then((result) => {
         if (result) {
           res.json(result);
@@ -138,48 +180,59 @@ module.exports = (app) => {
       });
   });
 
-  app.put("/posts/:id", app.auth.authenticate(), (req, res) => {
-    /**
-     * @api {put} /posts/:id Update a post
-     * @apiGroup Posts
-     * @apiParam {Number} id Post ID
-     * @apiParam {String} [title] Post title
-     * @apiParam {String} [description] Post description
-     * @apiParam {String} [image_url] Post image URL
-     * @apiParam {String} [video_url] Post video URL
-     * @apiParamExample {json} Input
-     * {
-     *   "title": "Updated Post Title",
-     *   "description": "Updated post description",
-     *   "image_url": "http://example.com/updated_image.jpg",
-     *   "video_url": "http://example.com/updated_video.mp4"
-     * }
-     * @apiHeaderExample {json} Header-Example:
-     *     {
-     *        'Content-Type': 'application/json',
-     *         'Authorization': '••••••'
-     *     }
-     * @apiSuccessExample {json} Success
-     * HTTP/1.1 204 No Content
-     * @apiErrorExample {json} Error - Post Not Found
-     * HTTP/1.1 404 Not Found
-     */
+  app.put(
+    "/posts/:id",
+    app.auth.authenticate(),
+    upload.single("image"),
+    (req, res) => {
+      /**
+       * @api {put} /posts/:id Update a post
+       * @apiGroup Posts
+       * @apiParam {Number} id Post ID
+       * @apiParam {String} [title] Post title
+       * @apiParam {String} [description] Post description
+       * @apiParam {String} [image_url] Post image URL
+       * @apiParam {String} [video_url] Post video URL
+       * @apiParamExample {json} Input
+       * {
+       *   "title": "Updated Post Title",
+       *   "description": "Updated post description",
+       *   "image_url": "http://example.com/updated_image.jpg",
+       *   "video_url": "http://example.com/updated_video.mp4"
+       * }
+       * @apiHeaderExample {json} Header-Example:
+       *     {
+       *        'Content-Type': 'application/json',
+       *         'Authorization': '••••••'
+       *     }
+       * @apiSuccessExample {json} Success
+       * HTTP/1.1 204 No Content
+       * @apiErrorExample {json} Error - Post Not Found
+       * HTTP/1.1 404 Not Found
+       */
 
-    req.body.user_id = req.user.id;
-    Posts.update(req.body, {
-      where: { id: req.params.id, user_id: req.user.id },
-    })
-      .then((result) => {
-        if (result) {
-          res.sendStatus(204);
-        } else {
-          res.status(404).json({ msg: "Post not found" });
-        }
+      req.body.user_id = req.user.id;
+
+      // Check if an image file is uploaded
+      if (req.file) {
+        req.body.image_url = `/uploads/images/${req.file.filename}`;
+      }
+
+      Posts.update(req.body, {
+        where: { id: req.params.id, user_id: req.user.id },
       })
-      .catch((error) => {
-        res.json({ msg: error.message });
-      });
-  });
+        .then((result) => {
+          if (result) {
+            res.sendStatus(204);
+          } else {
+            res.status(404).json({ msg: "Post not found" });
+          }
+        })
+        .catch((error) => {
+          res.json({ msg: error.message });
+        });
+    }
+  );
 
   app.delete("/posts/:id", app.auth.authenticate(), (req, res) => {
     /**

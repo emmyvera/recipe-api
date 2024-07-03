@@ -1,3 +1,5 @@
+import upload from "../libs/multer";
+
 module.exports = (app) => {
   const Recipes = app.db.models.Recipes;
   const Reviews = app.db.models.Reviews;
@@ -67,7 +69,7 @@ module.exports = (app) => {
         });
     })
     // Create a Recipe
-    .post(app.auth.authenticate(), (req, res) => {
+    .post(app.auth.authenticate(), upload.single("image"), (req, res) => {
       /**
        * @api {post} /recipes Create a new recipe
        * @apiGroup Recipes
@@ -121,6 +123,12 @@ module.exports = (app) => {
        * HTTP/1.1 412 Precondition Failed
        */
       req.body.user_id = req.user.id;
+
+      // Check if an image file is uploaded
+      if (req.file) {
+        req.body.image_url = `/uploads/images/${req.file.filename}`;
+      }
+
       Recipes.create(req.body)
         .then((result) => {
           res.json(result);
@@ -130,8 +138,12 @@ module.exports = (app) => {
         });
     });
   // Updated a Recipe
-  app.put("/recipes/:id", app.auth.authenticate(), (req, res) => {
-    /**
+  app.put(
+    "/recipes/:id",
+    app.auth.authenticate(),
+    upload.single("image"),
+    (req, res) => {
+      /**
      * @api {put} /recipes/:id Update a recipe
      * @apiGroup Recipes
      * @apiParam {String} food_name Recipe name
@@ -161,21 +173,28 @@ module.exports = (app) => {
      * @apiErrorExample {json} Error
      * HTTP/1.1 412 Precondition Failed
      */
-    req.body.user_id = req.user.id;
-    Recipes.update(req.body, {
-      where: { id: req.params.id, user_id: req.user.id },
-    })
-      .then((result) => {
-        if (result === null) {
-          res.json({ msg: "Recipe Not Found" });
-        } else {
-          res.sendStatus(204);
-        }
+      req.body.user_id = req.user.id;
+
+      // Check if an image file is uploaded
+      if (req.file) {
+        req.body.image_url = `/uploads/images/${req.file.filename}`;
+      }
+
+      Recipes.update(req.body, {
+        where: { id: req.params.id, user_id: req.user.id },
       })
-      .catch((error) => {
-        res.status(412).json({ msg: error.message });
-      });
-  });
+        .then((result) => {
+          if (result === null) {
+            res.json({ msg: "Recipe Not Found" });
+          } else {
+            res.sendStatus(204);
+          }
+        })
+        .catch((error) => {
+          res.status(412).json({ msg: error.message });
+        });
+    }
+  );
 
   app.get("/recipes/search", (req, res) => {
     /**

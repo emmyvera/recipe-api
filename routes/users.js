@@ -1,6 +1,10 @@
+import upload from "../libs/multer";
+
 module.exports = (app) => {
   const Users = app.db.models.Users;
-  app.post("/users", (req, res) => {
+  const Recipes = app.db.models.Recipes;
+  const Posts = app.db.models.Posts;
+  app.post("/users", upload.single("image"), (req, res) => {
     /**
      * @api {post} /users Register a new user
      * @apiGroup User
@@ -37,6 +41,10 @@ module.exports = (app) => {
      * * @apiErrorExample {json} Register error
      * * HTTP/1.1 412 Precondition Failed */
 
+    // Check if an image file is uploaded
+    if (req.file) {
+      req.body.image_url = `/uploads/images/${req.file.filename}`;
+    }
     Users.create(req.body)
       .then((result) => {
         res.json(result);
@@ -47,7 +55,7 @@ module.exports = (app) => {
   });
 
   app
-    .route("/users/:id")
+    .route("/user")
     .all(app.auth.authenticate())
     .get((req, res) => {
       /**
@@ -70,8 +78,25 @@ module.exports = (app) => {
        * HTTP/1.1 412 Precondition Failed
        */
 
-      Users.findByPk(req.params.id, {
-        attributes: ["id", "first_name", "last_name", "email"],
+      Users.findByPk(req.user.id, {
+        attributes: ["id", "first_name", "last_name", "email", "image_url"],
+        include: [
+          {
+            model: Recipes,
+            attributes: [
+              "id",
+              "food_name",
+              "description",
+              "image_url",
+              "views",
+            ], // Specify which user attributes to include
+          },
+
+          {
+            model: Posts,
+            attributes: ["id", "title", "image_url", "views"], // Specify which user attributes to include
+          },
+        ],
       })
         .then((result) => {
           if (result === null) {
@@ -84,7 +109,7 @@ module.exports = (app) => {
           res.status(412).json({ msg: error.message });
         });
     })
-    .put((req, res) => {
+    .put(upload.single("image"), (req, res) => {
       /**
        * @api {put} /users Update a user
        * @apiGroup User
@@ -100,6 +125,11 @@ module.exports = (app) => {
        *
        * * @apiErrorExample {json} Update error
        * * HTTP/1.1 412 Precondition Failed */
+
+      // Check if an image file is uploaded
+      if (req.file) {
+        req.body.image_url = `/uploads/images/${req.file.filename}`;
+      }
 
       Users.update(req.body, { where: { id: req.user.id } })
         .then((result) => {
